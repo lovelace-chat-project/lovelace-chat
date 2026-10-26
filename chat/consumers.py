@@ -4,6 +4,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 from .services import recent_messages, save_message
 
+MAX_MESSAGE_LENGTH = 2000
 
 class EchoConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -26,12 +27,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(self.group, self.channel_name)
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
+        try:
+            data = json.loads(text_data)
+        except json.JSONDecodeError:
+            return
+        if not isinstance(data, dict):
+            return
+
+        text = data.get("text")
+        if not isinstance(text, str):
+            return
+        text = text.strip()
+        if not text or len(text) > MAX_MESSAGE_LENGTH:
+            return
+
         sender = data.get("sender", "anon")
-        await save_message(self.room, sender, data["text"])
+        await save_message(self.room, sender, text)
         await self.channel_layer.group_send(
             self.group,
-            {"type": "chat.message", "sender": sender, "text": data["text"]},
+            {"type": "chat.message", "sender": sender, "text": text},
         )
 
     async def chat_message(self, event):
