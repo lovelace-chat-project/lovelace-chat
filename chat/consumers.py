@@ -3,7 +3,7 @@ import json
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-from .services import recent_messages, save_message
+from .services import recent_messages, recent_messages_all_rooms, save_message
 
 MAX_MESSAGE_LENGTH = 2000
 TEACHERS_GROUP = "teachers"
@@ -63,6 +63,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.channel_layer.group_add(TEACHERS_GROUP, self.channel_name)
         await self.accept()
+        for message in await recent_messages_all_rooms():
+            await self.send(text_data=json.dumps(message))
 
     async def disconnect(self, code):
         await self.channel_layer.group_discard(TEACHERS_GROUP, self.channel_name)
