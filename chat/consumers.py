@@ -1,4 +1,6 @@
 import json
+import hashlib
+import json
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 
@@ -18,7 +20,7 @@ class EchoConsumer(AsyncWebsocketConsumer):
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room = self.scope["url_route"]["kwargs"]["room"]
-        self.group = f"room_{self.room}"
+        self.group = "room_" + hashlib.sha256(self.room.encode()).hexdigest()
         await self.channel_layer.group_add(self.group, self.channel_name)
         await self.accept()
         for message in await recent_messages(self.room):
