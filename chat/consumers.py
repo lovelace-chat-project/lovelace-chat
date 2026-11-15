@@ -1,4 +1,3 @@
-import json
 import hashlib
 import json
 
@@ -45,18 +44,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         sender = data.get("sender", "anon")
-        await save_message(self.room, sender, text)
+        message = await save_message(self.room, sender, text)
+        time = message.created_at.isoformat()
         await self.channel_layer.group_send(
             self.group,
-            {"type": "chat.message", "sender": sender, "text": text},
+            {"type": "chat.message", "sender": sender, "text": text, "time": time},
         )
         await self.channel_layer.group_send(
             TEACHERS_GROUP,
-            {"type": "chat.message", "room": self.room, "sender": sender, "text": text},
+            {"type": "chat.message", "room": self.room, "sender": sender, "text": text, "time": time},
         )
 
     async def chat_message(self, event):
-        await self.send(text_data=json.dumps({"sender": event["sender"], "text": event["text"]}))
+        await self.send(text_data=json.dumps({"sender": event["sender"], "text": event["text"], "time": event["time"]}))
 
 
 class TeacherConsumer(AsyncWebsocketConsumer):
@@ -68,4 +68,4 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(TEACHERS_GROUP, self.channel_name)
 
     async def chat_message(self, event):
-        await self.send(text_data=json.dumps({"room": event["room"], "sender": event["sender"], "text": event["text"]}))
+        await self.send(text_data=json.dumps({"room": event["room"], "sender": event["sender"], "text": event["text"], "time": event["time"]}))
